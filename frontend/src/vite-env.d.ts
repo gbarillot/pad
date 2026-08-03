@@ -57,9 +57,6 @@ interface ConfigurationRecord {
   ollamaUrl: string;
   redcapUrl: string | null;
   redcapToken: string | null;
-  redcapRecordIdField: string;
-  redcapFirstNameField: string;
-  redcapLastNameField: string;
   manualMode: boolean;
   minConfidence: number;
   autoCleanup: boolean;

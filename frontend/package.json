@@ -10,7 +10,10 @@
     "build": "npm run typecheck && vite build && npm run build:electron",
     "build:electron": "tsc -p electron/tsconfig.json && cp electron/preload.cjs dist-electron/preload.cjs",
     "typecheck": "tsc --noEmit",
-    "package:mac": "npm run build && electron-builder --mac",
+    "generate:icons": "node scripts/generate-icons.mjs",
+    "clean:release": "node scripts/clean-release.mjs",
+    "package:worker": "cd ../worker && uv run python packaging/package_macos.py",
+    "package:mac": "npm run clean:release && npm run generate:icons && npm run package:worker && npm run build && electron-builder --mac",
     "postinstall": "electron-builder install-app-deps",
     "rebuild": "electron-builder install-app-deps"
   },
@@ -52,14 +55,22 @@
       {
         "from": "resources/seed/pad.sqlite3",
         "to": "seed/pad.sqlite3"
+      },
+      {
+        "from": "../worker/dist/pad-worker",
+        "to": "worker"
       }
     ],
     "mac": {
       "category": "public.app-category.medical",
+      "icon": "resources/icon.icns",
       "target": [
         "dmg",
         "zip"
       ]
+    },
+    "dmg": {
+      "icon": "resources/icon.icns"
     }
   }
 }

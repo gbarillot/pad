@@ -29,7 +29,7 @@ This document defines how AI agents and automated tools should interact with thi
 - The packaged/default desktop database is `~/Library/Application Support/PAD/pad.sqlite3`.
 - The default watched PDF folder is `~/Desktop/fichiers_pad`.
 - The default Ollama URL is `http://localhost:11434`.
-- REDCap URL, token, and field mappings are set in the PAD configuration screen and stored in SQLite.
+- REDCap URL and token are set in the PAD configuration screen and stored in SQLite. REDCap field mappings are internal worker defaults or standalone/debug env overrides, not user-facing desktop settings.
 - When Electron starts the worker, it reads SQLite configuration and injects worker environment variables such as `DATABASE_URL`, `FILES_DIR`, `OLLAMA_BASE_URL`, `REDCAP_API_URL`, and `REDCAP_TOKEN`.
 - Electron sets `PAD_DISABLE_ENV_FILE=true` for the worker, so the root `.env` file is ignored in normal desktop runtime.
 - A root `.env` file is optional and only useful for standalone worker/debug commands. Do not require `.env` for the normal app flow.
@@ -59,3 +59,4 @@ This document defines how AI agents and automated tools should interact with thi
 - Run frontend type checks with `make frontend-test`.
 - Run extraction tests with `make test on=extract`.
 - Run the REDCap transfer debug workflow with `make test on=transfer`; it requires `REDCAP_API_URL` and `REDCAP_TOKEN` in the shell environment or optional root `.env`.
+- Packaged macOS builds include the PyInstaller worker bundle and OCR/PDF tools. Ollama remains an external runtime dependency configured by URL.

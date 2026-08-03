@@ -71,6 +71,7 @@ For standalone/debug commands, configuration comes from shell environment variab
 - `REDCAP_DUPLICATE_CHECK_FIELD`, default `concat_nom_prenom_ddn`
 - `REDCAP_FIRST_NAME_FIELD`, default `prenom`
 - `REDCAP_LAST_NAME_FIELD`, default `nom`
+- REDCap field mapping variables are internal worker defaults/debug overrides; the desktop app does not expose them in user settings.
 - `REDCAP_HCG_EVENT`, optional; when empty, uses the matched patient event
 - `REDCAP_HCG_INSTRUMENT`, default `table_hcg`
 - `REDCAP_HCG_DATE_FIELD`, default `date_hcg`

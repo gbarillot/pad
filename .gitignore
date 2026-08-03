@@ -34,6 +34,8 @@ htmlcov/
 # Frontend
 node_modules/
 frontend/dist/
+frontend/dist-electron/
+frontend/release/
 frontend/.env
 frontend/.env.*
 

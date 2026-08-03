@@ -9,6 +9,7 @@ from pathlib import Path
 from app.models import RawExtraction
 from app.ollama import OllamaError, format_as_json
 from app.pdf import extract_pdf_text
+from app.runtime_tools import poppler_path
 from app.validation import (
     DEFAULT_SCHEMA,
     HCG_LABEL_PATTERN,
@@ -161,6 +162,7 @@ def build_vision_images(
         last_page=max(1, VISION_MAX_PAGES),
         fmt="png",
         thread_count=2,
+        poppler_path=poppler_path(),
     )
     return [encode_vision_image(page) for page in pages]
 

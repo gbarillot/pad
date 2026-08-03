@@ -86,8 +86,8 @@ The app uses these defaults:
 
 On first launch, PAD copies the previous development DB from `../persistence/data/pad_development.sqlite3` when present. Otherwise it copies the packaged seed DB and initializes the schema.
 
-Set REDCap values in the PAD configuration screen if transfers are enabled.
-The REDCap record ID, first-name, and last-name field settings must match the variable names used by the target REDCap project.
+Set REDCap URL and token in the PAD configuration screen if transfers are enabled.
+REDCap field mappings are internal worker defaults in `worker/app/transfer.py`; standalone/debug runs can override them with worker environment variables when needed.
 
 During normal desktop runtime, Electron reads the SQLite configuration table and injects worker environment variables such as `DATABASE_URL`, `FILES_DIR`, `OLLAMA_BASE_URL`, `REDCAP_API_URL`, and `REDCAP_TOKEN`. The worker does not read REDCap URL/token directly from SQLite.
 
@@ -152,17 +152,36 @@ This standalone debug workflow requires `REDCAP_API_URL` and `REDCAP_TOKEN` in t
 
 ## Package The Mac App
 
-Build the Electron app:
+Install build prerequisites on the packaging Mac:
+
+```sh
+brew install uv node tesseract tesseract-lang poppler
+```
+
+Verify Tesseract language data is available:
+
+```sh
+tesseract --list-langs
+```
+
+The output should include `fra`, `eng`, and `osd`.
+
+Build the Electron app and bundled worker:
 
 ```sh
 cd frontend
+npm install
 npm run package:mac
 cd ..
 ```
 
+`npm run package:mac` builds the Python worker into a standalone PyInstaller bundle, copies bundled OCR/PDF tools into that worker bundle, then builds the Electron macOS DMG and ZIP.
+
 The packaged app is written under `frontend/release`.
 
-The packaged Electron app stores its SQLite DB in `~/Library/Application Support/PAD/pad.sqlite3` and expects the configured PDF folder, Ollama, and worker setup described above.
+The packaged Electron app stores its SQLite DB in `~/Library/Application Support/PAD/pad.sqlite3`. It bundles the Python worker, Python dependencies, Tesseract, French/English tessdata, and Poppler tools, so the target Mac does not need Python, `uv`, or Homebrew OCR/PDF tools for PAD itself.
+
+Ollama remains external. The target Mac must run Ollama and have the configured model available, for example `qwen3-vl:8b-instruct`, and the Ollama URL must match the value in the PAD configuration screen.
 
 ## Troubleshooting
 

@@ -15,6 +15,11 @@ from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 from pypdf.errors import PyPdfError
 from pypdf import PdfReader
 
+from app.runtime_tools import configure_runtime_tools, packaged_runtime, poppler_path
+
+
+configure_runtime_tools()
+
 
 MIN_TEXT_CHARS_PER_PAGE = 80
 MIN_GOOD_TEXT_SCORE = 7
@@ -42,7 +47,7 @@ def extract_pdf_text(pdf_path: Path, *, ocr_language: str) -> str:
 
     candidates = [embedded_text] if embedded_text.strip() else []
 
-    ocrmypdf_text = _extract_with_ocrmypdf(pdf_path, ocr_language=ocr_language)
+    ocrmypdf_text = None if packaged_runtime() else _extract_with_ocrmypdf(pdf_path, ocr_language=ocr_language)
     if ocrmypdf_text:
         candidates.append(ocrmypdf_text)
         if _is_good_enough_text(ocrmypdf_text):
@@ -125,6 +130,7 @@ def _extract_with_direct_tesseract(pdf_path: Path, *, ocr_language: str) -> str 
         dpi=OCR_DPI,
         fmt="png",
         thread_count=2,
+        poppler_path=poppler_path(),
     )
     pages: list[PageText] = []
     for page_number, image in enumerate(images, start=1):

@@ -58,9 +58,6 @@ interface ConfigurationRecord {
   ollamaUrl: string;
   redcapUrl: string | null;
   redcapToken: string | null;
-  redcapRecordIdField: string;
-  redcapFirstNameField: string;
-  redcapLastNameField: string;
   manualMode: boolean;
   minConfidence: number;
   autoCleanup: boolean;
@@ -74,9 +71,6 @@ interface ConfigurationDbRow {
   ollama_url: string | null;
   redcap_url: string | null;
   redcap_token: string | null;
-  redcap_record_id_field: string | null;
-  redcap_first_name_field: string | null;
-  redcap_last_name_field: string | null;
   manual_mode: number;
   min_confidence: number;
   auto_cleanup: number;
@@ -90,9 +84,6 @@ interface ConfigurationUpdate {
   ollamaUrl?: string;
   redcapUrl?: string | null;
   redcapToken?: string | null;
-  redcapRecordIdField?: string;
-  redcapFirstNameField?: string;
-  redcapLastNameField?: string;
   manualMode?: boolean;
   minConfidence?: number;
   autoCleanup?: boolean;
@@ -118,12 +109,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const defaultFilesDirectoryName = "fichiers_pad";
 const defaultFilesDirectoryPath = `~/Desktop/${defaultFilesDirectoryName}`;
 const defaultOllamaUrl = "http://localhost:11434";
-const defaultRedcapRecordIdField = "pat";
-const defaultRedcapFirstNameField = "prenom";
-const defaultRedcapLastNameField = "nom";
-const legacyDefaultRedcapRecordIdField = "record_id";
-const legacyDefaultRedcapFirstNameField = "patient_first_name";
-const legacyDefaultRedcapLastNameField = "patient_last_name";
 const databaseFileName = "pad.sqlite3";
 const legacyDatabaseFileName = "pad_development.sqlite3";
 let filesWatcher: fs.FSWatcher | null = null;
@@ -161,7 +146,7 @@ function ensureDefaultDatabaseFile(databasePath: string) {
   }
 
   fs.mkdirSync(path.dirname(databasePath), { recursive: true });
-  const sourceDatabasePath = findLegacyDatabasePath() ?? findSeedDatabasePath();
+  const sourceDatabasePath = app.isPackaged ? findSeedDatabasePath() : findLegacyDatabasePath() ?? findSeedDatabasePath();
   if (!sourceDatabasePath || path.resolve(sourceDatabasePath) === path.resolve(databasePath)) {
     return;
   }
@@ -227,9 +212,6 @@ function ensureConfigurationSchema(db: SQLiteDatabase) {
       ollama_url TEXT NOT NULL DEFAULT '${defaultOllamaUrl}',
       redcap_url TEXT DEFAULT NULL,
       redcap_token TEXT DEFAULT NULL,
-      redcap_record_id_field TEXT NOT NULL DEFAULT '${defaultRedcapRecordIdField}',
-      redcap_first_name_field TEXT NOT NULL DEFAULT '${defaultRedcapFirstNameField}',
-      redcap_last_name_field TEXT NOT NULL DEFAULT '${defaultRedcapLastNameField}',
       manual_mode INTEGER NOT NULL DEFAULT 0 CHECK (manual_mode IN (0, 1)),
       min_confidence REAL NOT NULL DEFAULT 0.90,
       auto_cleanup INTEGER NOT NULL DEFAULT 1 CHECK (auto_cleanup IN (0, 1)),
@@ -258,36 +240,6 @@ function ensureConfigurationSchema(db: SQLiteDatabase) {
   if (!existingColumns.has("ollama_url")) {
     db.prepare(`ALTER TABLE configuration ADD COLUMN ollama_url TEXT NOT NULL DEFAULT '${defaultOllamaUrl}'`).run();
   }
-  if (!existingColumns.has("redcap_record_id_field")) {
-    db.prepare(`ALTER TABLE configuration ADD COLUMN redcap_record_id_field TEXT NOT NULL DEFAULT '${defaultRedcapRecordIdField}'`).run();
-  }
-  if (!existingColumns.has("redcap_first_name_field")) {
-    db.prepare(`ALTER TABLE configuration ADD COLUMN redcap_first_name_field TEXT NOT NULL DEFAULT '${defaultRedcapFirstNameField}'`).run();
-  }
-  if (!existingColumns.has("redcap_last_name_field")) {
-    db.prepare(`ALTER TABLE configuration ADD COLUMN redcap_last_name_field TEXT NOT NULL DEFAULT '${defaultRedcapLastNameField}'`).run();
-  }
-  db.prepare(`
-    UPDATE configuration
-    SET redcap_record_id_field = ?
-    WHERE redcap_record_id_field IS NULL
-       OR redcap_record_id_field = ''
-       OR redcap_record_id_field = ?
-  `).run(defaultRedcapRecordIdField, legacyDefaultRedcapRecordIdField);
-  db.prepare(`
-    UPDATE configuration
-    SET redcap_first_name_field = ?
-    WHERE redcap_first_name_field IS NULL
-       OR redcap_first_name_field = ''
-       OR redcap_first_name_field = ?
-  `).run(defaultRedcapFirstNameField, legacyDefaultRedcapFirstNameField);
-  db.prepare(`
-    UPDATE configuration
-    SET redcap_last_name_field = ?
-    WHERE redcap_last_name_field IS NULL
-       OR redcap_last_name_field = ''
-       OR redcap_last_name_field = ?
-  `).run(defaultRedcapLastNameField, legacyDefaultRedcapLastNameField);
   if (!existingColumns.has("running")) {
     db.prepare("ALTER TABLE configuration ADD COLUMN running INTEGER NOT NULL DEFAULT 0").run();
   }
@@ -475,8 +427,9 @@ function getConfiguration(): ConfigurationRecord {
   }
 }
 
-function saveConfiguration(_: unknown, update: ConfigurationUpdate): ConfigurationRecord {
+async function saveConfiguration(_: unknown, update: ConfigurationUpdate): Promise<ConfigurationRecord> {
   const currentConfiguration = getConfiguration();
+  const shouldRefreshStatus = configurationUpdateRequiresStatusRefresh(update);
   const minConfidence = hasConfigurationValue(update, "minConfidence") && Number.isFinite(update.minConfidence)
     ? update.minConfidence
     : currentConfiguration.minConfidence;
@@ -485,9 +438,6 @@ function saveConfiguration(_: unknown, update: ConfigurationUpdate): Configurati
     ollamaUrl: hasConfigurationValue(update, "ollamaUrl") ? update.ollamaUrl : currentConfiguration.ollamaUrl,
     redcapUrl: hasConfigurationValue(update, "redcapUrl") ? update.redcapUrl : currentConfiguration.redcapUrl,
     redcapToken: hasConfigurationValue(update, "redcapToken") ? update.redcapToken : currentConfiguration.redcapToken,
-    redcapRecordIdField: hasConfigurationValue(update, "redcapRecordIdField") ? update.redcapRecordIdField : currentConfiguration.redcapRecordIdField,
-    redcapFirstNameField: hasConfigurationValue(update, "redcapFirstNameField") ? update.redcapFirstNameField : currentConfiguration.redcapFirstNameField,
-    redcapLastNameField: hasConfigurationValue(update, "redcapLastNameField") ? update.redcapLastNameField : currentConfiguration.redcapLastNameField,
     manualMode: hasConfigurationValue(update, "manualMode") ? update.manualMode : currentConfiguration.manualMode,
     minConfidence,
     autoCleanup: hasConfigurationValue(update, "autoCleanup") ? update.autoCleanup : currentConfiguration.autoCleanup,
@@ -505,9 +455,6 @@ function saveConfiguration(_: unknown, update: ConfigurationUpdate): Configurati
           ollama_url = ?,
           redcap_url = ?,
           redcap_token = ?,
-          redcap_record_id_field = ?,
-          redcap_first_name_field = ?,
-          redcap_last_name_field = ?,
           manual_mode = ?,
           min_confidence = ?,
           auto_cleanup = ?,
@@ -521,9 +468,6 @@ function saveConfiguration(_: unknown, update: ConfigurationUpdate): Configurati
       nextConfiguration.ollamaUrl || defaultOllamaUrl,
       nextConfiguration.redcapUrl || null,
       nextConfiguration.redcapToken || null,
-      nextConfiguration.redcapRecordIdField || defaultRedcapRecordIdField,
-      nextConfiguration.redcapFirstNameField || defaultRedcapFirstNameField,
-      nextConfiguration.redcapLastNameField || defaultRedcapLastNameField,
       nextConfiguration.manualMode ? 1 : 0,
       nextConfiguration.minConfidence,
       nextConfiguration.autoCleanup ? 1 : 0,
@@ -537,9 +481,17 @@ function saveConfiguration(_: unknown, update: ConfigurationUpdate): Configurati
 
   restartFilesWatcher();
   notifyFilesChanged();
-  void refreshSystemStatus();
+  if (shouldRefreshStatus) {
+    await refreshSystemStatus();
+  }
 
   return getConfiguration();
+}
+
+function configurationUpdateRequiresStatusRefresh(update: ConfigurationUpdate) {
+  return hasConfigurationValue(update, "filesDirectoryPath")
+    || hasConfigurationValue(update, "ollamaUrl")
+    || hasConfigurationValue(update, "redcapUrl");
 }
 
 function hasConfigurationValue<Key extends keyof ConfigurationUpdate>(update: ConfigurationUpdate, key: Key) {
@@ -841,13 +793,13 @@ function startWorkerDaemon() {
     return;
   }
 
-  const workerDirectory = findWorkerDirectory();
-  if (!workerDirectory) {
-    throw new Error("Worker directory not found. Set PAD_WORKER_DIR or run the app from the project checkout.");
+  const workerCommand = resolveWorkerCommand();
+  if (!workerCommand) {
+    throw new Error("Worker not found. Set PAD_WORKER_DIR or run the app from the project checkout.");
   }
 
-  workerProcess = spawn("uv", ["run", "python", "-m", "app.daemon"], {
-    cwd: workerDirectory,
+  workerProcess = spawn(workerCommand.command, workerCommand.args, {
+    cwd: workerCommand.cwd,
     env: workerEnvironment(),
   });
   workerProcess.stdout.on("data", (chunk) => {
@@ -881,9 +833,6 @@ function workerEnvironment(): NodeJS.ProcessEnv {
     OLLAMA_BASE_URL: configuration.ollamaUrl || defaultOllamaUrl,
     OCR_LANGUAGE: "fra+eng",
     POLL_INTERVAL: "1.0",
-    REDCAP_RECORD_ID_FIELD: configuration.redcapRecordIdField || defaultRedcapRecordIdField,
-    REDCAP_FIRST_NAME_FIELD: configuration.redcapFirstNameField || defaultRedcapFirstNameField,
-    REDCAP_LAST_NAME_FIELD: configuration.redcapLastNameField || defaultRedcapLastNameField,
     REDCAP_VERIFY_SSL: "true",
   };
 
@@ -913,6 +862,36 @@ function stopWorkerDaemon() {
 
   workerProcess.kill("SIGTERM");
   workerProcess = null;
+}
+
+function resolveWorkerCommand() {
+  const packagedWorkerPath = packagedWorkerExecutablePath();
+  if (packagedWorkerPath && fs.existsSync(packagedWorkerPath)) {
+    return {
+      command: packagedWorkerPath,
+      args: [],
+      cwd: path.dirname(packagedWorkerPath),
+    };
+  }
+
+  const workerDirectory = findWorkerDirectory();
+  if (!workerDirectory) {
+    return null;
+  }
+  return {
+    command: "uv",
+    args: ["run", "python", "-m", "app.daemon"],
+    cwd: workerDirectory,
+  };
+}
+
+function packagedWorkerExecutablePath() {
+  const executableName = process.platform === "win32" ? "pad-worker.exe" : "pad-worker";
+  const candidates = [
+    path.join(process.resourcesPath, "worker", executableName),
+    path.join(process.resourcesPath, "worker", "pad-worker", executableName),
+  ];
+  return candidates.find((candidate) => fs.existsSync(candidate)) ?? null;
 }
 
 function findWorkerDirectory() {
@@ -1090,16 +1069,13 @@ function readConfigurationRunning(db: SQLiteDatabase) {
 }
 
 function readConfiguration(db: SQLiteDatabase): ConfigurationRecord {
-  const row = db.prepare("SELECT files_directory_path, ollama_url, redcap_url, redcap_token, redcap_record_id_field, redcap_first_name_field, redcap_last_name_field, manual_mode, min_confidence, auto_cleanup, running, prompt_default, prompt_retry FROM configuration LIMIT 1").get() as ConfigurationDbRow;
+  const row = db.prepare("SELECT files_directory_path, ollama_url, redcap_url, redcap_token, manual_mode, min_confidence, auto_cleanup, running, prompt_default, prompt_retry FROM configuration LIMIT 1").get() as ConfigurationDbRow;
 
   return {
     filesDirectoryPath: row.files_directory_path,
     ollamaUrl: row.ollama_url || defaultOllamaUrl,
     redcapUrl: row.redcap_url,
     redcapToken: row.redcap_token,
-    redcapRecordIdField: row.redcap_record_id_field || defaultRedcapRecordIdField,
-    redcapFirstNameField: row.redcap_first_name_field || defaultRedcapFirstNameField,
-    redcapLastNameField: row.redcap_last_name_field || defaultRedcapLastNameField,
     manualMode: Boolean(row.manual_mode),
     minConfidence: row.min_confidence,
     autoCleanup: Boolean(row.auto_cleanup),

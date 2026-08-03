@@ -19,9 +19,6 @@ const configurationTabs: Array<{ id: ConfigurationTab; label: string }> = [
   { id: "technical", label: "Paramètres techniques" },
   { id: "prompt", label: "Prompt" },
 ];
-const defaultRedcapRecordIdField = "pat";
-const defaultRedcapFirstNameField = "prenom";
-const defaultRedcapLastNameField = "nom";
 
 function App() {
   const [files, setFiles] = useState<FileRecord[]>([]);
@@ -35,9 +32,6 @@ function App() {
   const [ollamaUrl, setOllamaUrl] = useState("http://localhost:11434");
   const [redcapApiUrl, setRedcapApiUrl] = useState("");
   const [redcapApiToken, setRedcapApiToken] = useState("");
-  const [redcapRecordIdField, setRedcapRecordIdField] = useState(defaultRedcapRecordIdField);
-  const [redcapFirstNameField, setRedcapFirstNameField] = useState(defaultRedcapFirstNameField);
-  const [redcapLastNameField, setRedcapLastNameField] = useState(defaultRedcapLastNameField);
   const [manualValidationRequired, setManualValidationRequired] = useState(false);
   const [autoCleanup, setAutoCleanup] = useState(true);
   const [minimumConfidenceScore, setMinimumConfidenceScore] = useState("0.9");
@@ -134,9 +128,6 @@ function App() {
     setOllamaUrl(configuration.ollamaUrl);
     setRedcapApiUrl(configuration.redcapUrl ?? "");
     setRedcapApiToken(configuration.redcapToken ?? "");
-    setRedcapRecordIdField(configuration.redcapRecordIdField);
-    setRedcapFirstNameField(configuration.redcapFirstNameField);
-    setRedcapLastNameField(configuration.redcapLastNameField);
     setManualValidationRequired(configuration.manualMode);
     setAutoCleanup(configuration.autoCleanup);
     setMinimumConfidenceScore(configuration.minConfidence.toString());
@@ -305,9 +296,6 @@ function App() {
             ollamaUrl={ollamaUrl}
             redcapApiToken={redcapApiToken}
             redcapApiUrl={redcapApiUrl}
-            redcapRecordIdField={redcapRecordIdField}
-            redcapFirstNameField={redcapFirstNameField}
-            redcapLastNameField={redcapLastNameField}
             manualValidationRequired={manualValidationRequired}
             autoCleanup={autoCleanup}
             minimumConfidenceScore={minimumConfidenceScore}
@@ -317,9 +305,6 @@ function App() {
             setOllamaUrl={setOllamaUrl}
             setRedcapApiToken={setRedcapApiToken}
             setRedcapApiUrl={setRedcapApiUrl}
-            setRedcapRecordIdField={setRedcapRecordIdField}
-            setRedcapFirstNameField={setRedcapFirstNameField}
-            setRedcapLastNameField={setRedcapLastNameField}
             setManualValidationRequired={setManualValidationRequired}
             setAutoCleanup={setAutoCleanup}
             setMinimumConfidenceScore={setMinimumConfidenceScore}
@@ -763,9 +748,6 @@ function ConfigurationPage({
   ollamaUrl,
   redcapApiToken,
   redcapApiUrl,
-  redcapRecordIdField,
-  redcapFirstNameField,
-  redcapLastNameField,
   manualValidationRequired,
   autoCleanup,
   minimumConfidenceScore,
@@ -775,9 +757,6 @@ function ConfigurationPage({
   setOllamaUrl,
   setRedcapApiToken,
   setRedcapApiUrl,
-  setRedcapRecordIdField,
-  setRedcapFirstNameField,
-  setRedcapLastNameField,
   setManualValidationRequired,
   setAutoCleanup,
   setMinimumConfidenceScore,
@@ -790,9 +769,6 @@ function ConfigurationPage({
   ollamaUrl: string;
   redcapApiToken: string;
   redcapApiUrl: string;
-  redcapRecordIdField: string;
-  redcapFirstNameField: string;
-  redcapLastNameField: string;
   manualValidationRequired: boolean;
   autoCleanup: boolean;
   minimumConfidenceScore: string;
@@ -802,9 +778,6 @@ function ConfigurationPage({
   setOllamaUrl: (value: string) => void;
   setRedcapApiToken: (value: string) => void;
   setRedcapApiUrl: (value: string) => void;
-  setRedcapRecordIdField: (value: string) => void;
-  setRedcapFirstNameField: (value: string) => void;
-  setRedcapLastNameField: (value: string) => void;
   setManualValidationRequired: (value: boolean) => void;
   setAutoCleanup: (value: boolean) => void;
   setMinimumConfidenceScore: (value: string) => void;
@@ -902,33 +875,6 @@ function ConfigurationPage({
                   placeholder="Token RedCap"
                   type="password"
                   value={redcapApiToken}
-                />
-              </ConfigField>
-              <ConfigField label="Champ REDCap ID dossier">
-                <input
-                  className="w-full rounded-xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-700 outline-none focus:border-clinic-500"
-                  onBlur={() => void saveConfiguration({ redcapRecordIdField: redcapRecordIdField || defaultRedcapRecordIdField })}
-                  onChange={(event) => setRedcapRecordIdField(event.target.value)}
-                  placeholder={defaultRedcapRecordIdField}
-                  value={redcapRecordIdField}
-                />
-              </ConfigField>
-              <ConfigField label="Champ REDCap prénom patient">
-                <input
-                  className="w-full rounded-xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-700 outline-none focus:border-clinic-500"
-                  onBlur={() => void saveConfiguration({ redcapFirstNameField: redcapFirstNameField || defaultRedcapFirstNameField })}
-                  onChange={(event) => setRedcapFirstNameField(event.target.value)}
-                  placeholder={defaultRedcapFirstNameField}
-                  value={redcapFirstNameField}
-                />
-              </ConfigField>
-              <ConfigField label="Champ REDCap nom patient">
-                <input
-                  className="w-full rounded-xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-700 outline-none focus:border-clinic-500"
-                  onBlur={() => void saveConfiguration({ redcapLastNameField: redcapLastNameField || defaultRedcapLastNameField })}
-                  onChange={(event) => setRedcapLastNameField(event.target.value)}
-                  placeholder={defaultRedcapLastNameField}
-                  value={redcapLastNameField}
                 />
               </ConfigField>
             </div>
