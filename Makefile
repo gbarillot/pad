@@ -66,7 +66,11 @@ transfer-test: standalone-env
 	cd worker && uv run python -m app.transfer
 
 .PHONY: worker-test
-worker-test: extract-test
+worker-test: worker-coverage
+
+.PHONY: worker-coverage
+worker-coverage:
+	cd worker && PYTHONDEVMODE=0 uv run python -W ignore::ResourceWarning -m pytest --cov=app --cov-report=term-missing
 
 .PHONY: frontend-test
 frontend-test:

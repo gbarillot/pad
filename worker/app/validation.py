@@ -799,9 +799,9 @@ def normalize_hcg_operator(operator: str | None) -> str:
     if not operator:
         return "="
     operator = operator.strip()
-    if operator in {"≤", "=<"}:
+    if operator in {"≤", "=<", "<="}:
         return "<="
-    if operator in {"≥", "=>"}:
+    if operator in {"≥", "=>", ">="}:
         return ">="
     if operator.startswith("<"):
         return "<"

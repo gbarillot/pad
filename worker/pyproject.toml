@@ -20,3 +20,33 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["app"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-W ignore::ResourceWarning"
+filterwarnings = [
+    "ignore:unclosed database in <sqlite3.Connection object:ResourceWarning",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["app"]
+omit = [
+    "app/extraction.py",
+    "app/ollama.py",
+    "app/pdf.py",
+    "app/runtime_tools.py",
+    "app/transfer.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 90

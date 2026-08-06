@@ -3,8 +3,9 @@ from __future__ import annotations
 import json
 import hashlib
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 
 DEFAULT_MIN_CONFIDENCE = 0.9
@@ -18,12 +19,20 @@ def sqlite_path_from_url(database_url: str) -> Path:
     return Path(database_url)
 
 
-def connect(db_path: Path) -> sqlite3.Connection:
+@contextmanager
+def connect(db_path: Path) -> Iterator[sqlite3.Connection]:
     connection = sqlite3.connect(db_path, timeout=30)
-    connection.row_factory = sqlite3.Row
-    connection.execute("PRAGMA busy_timeout = 30000")
-    ensure_file_schema(connection)
-    return connection
+    try:
+        connection.row_factory = sqlite3.Row
+        connection.execute("PRAGMA busy_timeout = 30000")
+        ensure_file_schema(connection)
+        yield connection
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
 
 
 def ensure_file_schema(connection: sqlite3.Connection) -> None:
