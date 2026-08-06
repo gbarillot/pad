@@ -276,14 +276,20 @@ function App() {
               {visibleFiles.length > 0 ? (
                 <FilesTable
                   files={visibleFiles}
-                  onFailure={setFailureFile}
+                  onFailure={(file) => {
+                    setReviewFile(null);
+                    setInspectFile(null);
+                    setFailureFile(file);
+                  }}
                   onInspect={(file) => {
                     setReviewFile(null);
+                    setFailureFile(null);
                     setInspectFile(file);
                   }}
                   onOpen={openFile}
                   onReview={(file) => {
                     setInspectFile(null);
+                    setFailureFile(null);
                     setReviewFile(file);
                   }}
                 />
@@ -326,7 +332,15 @@ function App() {
         onConfirm={clearFiles}
         open={clearModalOpen}
       />
-      <FailureErrorModal file={failureFile} onClose={() => setFailureFile(null)} />
+      <ReviewDrawer
+        file={failureFile}
+        onClose={() => setFailureFile(null)}
+        onSaved={() => {
+          setFailureFile(null);
+          void loadFiles({ silent: true });
+        }}
+        variant="replay"
+      />
       <ReviewDrawer
         file={reviewFile}
         onClose={() => setReviewFile(null)}
@@ -416,11 +430,13 @@ function ReviewDrawer({
   onClose,
   onSaved,
   readOnly = false,
+  variant = "review",
 }: {
   file: FileRecord | null;
   onClose: () => void;
   onSaved: (file: FileRecord) => void;
   readOnly?: boolean;
+  variant?: "review" | "replay";
 }) {
   const [draft, setDraft] = useState<ExtractedJsonRecord>(() => normalizeExtractedJson(null));
   const [saving, setSaving] = useState(false);
@@ -436,6 +452,11 @@ function ReviewDrawer({
   if (!file) {
     return null;
   }
+
+  const replayMode = variant === "replay";
+  const title = readOnly ? "Analyse" : replayMode ? "Rejouer" : "Validation";
+  const primaryLabel = replayMode ? "Rejouer" : "Enregistrer";
+  const savingLabel = replayMode ? "Rejeu..." : "Sauvegarde...";
 
   async function saveReview() {
     if (!window.trackedFiles || !file) {
@@ -492,13 +513,20 @@ function ReviewDrawer({
       <aside className="fixed right-0 top-0 z-50 h-screen w-full max-w-2xl overflow-y-auto bg-[#f5f9fd] p-8 shadow-[-20px_0_50px_rgba(15,23,42,0.18)]">
         <div className="mb-8 flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h2 className="text-2xl font-semibold text-slate-950">{readOnly ? "Analyse" : "Validation"}</h2>
+            <h2 className="text-2xl font-semibold text-slate-950">{title}</h2>
             <p className="mt-2 truncate text-sm text-slate-600">{file.name}</p>
           </div>
           <button className="rounded-full border border-slate-200 px-3 py-1 text-sm text-slate-500" onClick={onClose} type="button">
             Fermer
           </button>
         </div>
+
+        {replayMode && file.error ? (
+          <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-800">
+            <p className="font-semibold">Erreur</p>
+            <p className="mt-1 whitespace-pre-wrap">{file.error}</p>
+          </div>
+        ) : null}
 
         <div className="space-y-6">
           <ReviewSection title="Patient">
@@ -573,18 +601,19 @@ function ReviewDrawer({
           <>
             {error ? <p className="mt-6 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
             <div className="mt-8 flex items-center justify-between gap-3 border-t border-slate-200 pt-5">
-              <button className="rounded-md bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(225,29,72,0.22)] transition hover:bg-rose-700 focus:outline-none focus:ring-4 focus:ring-rose-200 disabled:cursor-not-allowed disabled:bg-rose-500/70" disabled={saving} onClick={() => void rejectReview()} type="button">
-                Rejeter
-              </button>
-              <div className="flex justify-end gap-3">
+              {replayMode ? (
                 <button className="rounded-md border border-slate-300 bg-transparent px-5 py-2.5 text-sm font-medium text-slate-600" disabled={saving} onClick={onClose} type="button">
                   Annuler
                 </button>
-                <button className="inline-flex items-center gap-2 rounded-md bg-clinic-600 px-5 py-2.5 text-sm font-semibold text-white shadow-soft-blue transition hover:bg-clinic-700 focus:outline-none focus:ring-4 focus:ring-clinic-200 disabled:cursor-not-allowed disabled:bg-clinic-500/70" disabled={saving} onClick={() => void saveReview()} type="button">
-                  {saving ? <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" strokeWidth={2.2} /> : null}
-                  {saving ? "Sauvegarde..." : "Enregistrer"}
+              ) : (
+                <button className="rounded-md bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(225,29,72,0.22)] transition hover:bg-rose-700 focus:outline-none focus:ring-4 focus:ring-rose-200 disabled:cursor-not-allowed disabled:bg-rose-500/70" disabled={saving} onClick={() => void rejectReview()} type="button">
+                  Rejeter
                 </button>
-              </div>
+              )}
+              <button className="inline-flex items-center gap-2 rounded-md bg-clinic-600 px-5 py-2.5 text-sm font-semibold text-white shadow-soft-blue transition hover:bg-clinic-700 focus:outline-none focus:ring-4 focus:ring-clinic-200 disabled:cursor-not-allowed disabled:bg-clinic-500/70" disabled={saving} onClick={() => void saveReview()} type="button">
+                {saving ? <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" strokeWidth={2.2} /> : null}
+                {saving ? savingLabel : primaryLabel}
+              </button>
             </div>
           </>
         ) : null}
@@ -1027,29 +1056,6 @@ function ClearConfirmationModal({
           <button className="inline-flex items-center gap-2 rounded-md bg-clinic-600 px-5 py-2.5 text-sm font-semibold text-white shadow-soft-blue transition hover:bg-clinic-700 focus:outline-none focus:ring-4 focus:ring-clinic-200 disabled:cursor-not-allowed disabled:bg-clinic-500/70" disabled={loading} onClick={() => void onConfirm()} type="button">
             {loading ? <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" strokeWidth={2.2} /> : null}
             {loading ? "Suppression..." : "confirmer"}
-          </button>
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function FailureErrorModal({ file, onClose }: { file: FileRecord | null; onClose: () => void }) {
-  if (!file) {
-    return null;
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/25 px-6">
-      <section className="w-full max-w-xl bg-[#f5f9fd] shadow-[0_24px_80px_rgba(15,23,42,0.22)]">
-        <div className="p-8">
-          <h3 className="text-lg font-semibold text-rose-700">Echec</h3>
-          <p className="mt-2 truncate text-sm text-slate-600">{file.name}</p>
-          <pre className="mt-5 max-h-72 overflow-auto whitespace-pre-wrap rounded-md border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-800">{file.error || "Erreur inconnue"}</pre>
-        </div>
-        <div className="flex justify-end border-t border-slate-200 px-8 py-5">
-          <button className="rounded-md bg-clinic-600 px-5 py-2.5 text-sm font-semibold text-white shadow-soft-blue transition hover:bg-clinic-700 focus:outline-none focus:ring-4 focus:ring-clinic-200" onClick={onClose} type="button">
-            Fermer
           </button>
         </div>
       </section>

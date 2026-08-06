@@ -213,7 +213,7 @@ def list_ready_files(db_path: Path) -> list[sqlite3.Row]:
     with connect(db_path) as connection:
         return connection.execute(
             """
-            SELECT id, extracted_json
+            SELECT id, name, extracted_json
             FROM files
             WHERE status = 'ready'
               AND extracted_json IS NOT NULL
@@ -292,6 +292,25 @@ def manual_mode(db_path: Path) -> bool:
         return bool(row is not None and row["manual_mode"])
 
 
+def auto_cleanup(db_path: Path) -> bool:
+    with connect(db_path) as connection:
+        table_exists = connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'configuration'"
+        ).fetchone()
+        if not table_exists:
+            return False
+
+        existing_columns = {
+            row["name"]
+            for row in connection.execute("PRAGMA table_info(configuration)").fetchall()
+        }
+        if "auto_cleanup" not in existing_columns:
+            return False
+
+        row = connection.execute("SELECT auto_cleanup FROM configuration LIMIT 1").fetchone()
+        return bool(row is not None and row["auto_cleanup"])
+
+
 def claim_file(db_path: Path, file_id: str) -> bool:
     with connect(db_path) as connection:
         cursor = connection.execute(
@@ -340,6 +359,12 @@ def mark_saved(db_path: Path, file_id: str) -> None:
             """,
             (file_id,),
         )
+
+
+def delete_file_tracking(db_path: Path, file_id: str) -> None:
+    with connect(db_path) as connection:
+        connection.execute("DELETE FROM file_events WHERE file_id = ?", (file_id,))
+        connection.execute("DELETE FROM files WHERE id = ?", (file_id,))
 
 
 def mark_review(db_path: Path, file_id: str, *, error: str | None = None) -> None:

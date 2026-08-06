@@ -1310,6 +1310,12 @@ ipcMain.handle("system-status:get", getSystemStatus);
 app.whenReady().then(async () => {
   getConfiguration();
   await refreshSystemStatus();
+  app.setAboutPanelOptions({
+    applicationName: "PAD\nPlateforme d'Automatisation Documentaire",
+    applicationVersion: app.getVersion(),
+    copyright: "guillaume@barillot.me",
+    credits: "© 2026 Guillaume Barillot",
+  });
   createApplicationMenu();
   createWindow();
   startFilesWatcher();

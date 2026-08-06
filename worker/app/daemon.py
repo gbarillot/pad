@@ -12,7 +12,7 @@ if __package__ in {None, ""}:
 from app.config import database_url, files_dir, ocr_language, ollama_base_url, poll_interval
 from app.extraction import resolve_default_model
 from app.main import extract_pdf_only
-from app.repository import claim_file, claim_ready_file, has_active_files, list_ready_files, list_todo_files, manual_mode, mark_failed, mark_ready, mark_review, mark_saved, min_confidence, reset_interrupted_files, set_running, sqlite_path_from_url
+from app.repository import auto_cleanup, claim_file, claim_ready_file, delete_file_tracking, has_active_files, list_ready_files, list_todo_files, manual_mode, mark_failed, mark_ready, mark_review, mark_saved, min_confidence, reset_interrupted_files, set_running, sqlite_path_from_url
 from app.transfer import PatientMatchError, transfer_payload
 from app.validation import result_confidence
 
@@ -42,7 +42,7 @@ def process_pending_files(db_path: Path) -> None:
     for row in list_todo_files(db_path):
         process_extraction(db_path, file_id=row["id"], name=row["name"])
     for row in list_ready_files(db_path):
-        process_transfer(db_path, file_id=row["id"], extracted_json=row["extracted_json"])
+        process_transfer(db_path, file_id=row["id"], name=row["name"], extracted_json=row["extracted_json"])
     if not has_active_files(db_path):
         set_running(db_path, False)
 
@@ -61,17 +61,27 @@ def process_extraction(db_path: Path, *, file_id: str, name: str) -> None:
         mark_failed(db_path, file_id, error=str(exc))
 
 
-def process_transfer(db_path: Path, *, file_id: str, extracted_json: str) -> None:
+def process_transfer(db_path: Path, *, file_id: str, name: str, extracted_json: str) -> None:
     if not claim_ready_file(db_path, file_id):
         return
 
     try:
         transfer_payload(load_extracted_json(extracted_json), should_import=True)
         mark_saved(db_path, file_id)
+        if auto_cleanup(db_path):
+            cleanup_processed_file(db_path, file_id=file_id, name=name)
     except PatientMatchError as exc:
         mark_review(db_path, file_id, error=str(exc))
     except Exception as exc:  # noqa: BLE001 - persist transfer failures in the DB.
         mark_failed(db_path, file_id, error=str(exc))
+
+
+def cleanup_processed_file(db_path: Path, *, file_id: str, name: str) -> None:
+    try:
+        (FILES_DIR / name).unlink(missing_ok=True)
+        delete_file_tracking(db_path, file_id)
+    except Exception as exc:  # noqa: BLE001 - transfer already succeeded; do not requeue it.
+        print(f"auto-cleanup failed for {name}: {exc}", file=sys.stderr, flush=True)
 
 
 def load_extracted_json(value: str) -> dict[str, object]:
