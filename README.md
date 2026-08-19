@@ -213,3 +213,6 @@ cd ..
 ```
 
 If the worker does nothing, check that the SQLite DB contains `files` rows with `status = 'todo'` and that the matching PDFs exist in the configured PDF folder.
+
+### Recommended Machine
+https://www.apple.com/fr/shop/buy-mac/mac-mini/puce-m4-cpu-10-c%C5%93urs-gpu-10-c%C5%93urs-24-go-m%C3%A9moire-256go-stockage
