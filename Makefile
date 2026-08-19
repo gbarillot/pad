@@ -75,3 +75,7 @@ worker-coverage:
 .PHONY: frontend-test
 frontend-test:
 	cd frontend && npm run typecheck
+
+.PHONY: build
+build:
+	cd frontend && HOMEBREW_PREFIX="$$(brew --prefix)" npm run package:mac
