@@ -204,6 +204,7 @@ function App() {
 
   return (
     <main className="h-screen overflow-hidden bg-[#edf3f9] text-slate-900">
+      <div aria-hidden="true" className="titlebar-drag-region fixed inset-x-0 top-0 z-40 h-8" />
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top_left,rgba(51,136,216,0.22),transparent_34%),radial-gradient(circle_at_85%_10%,rgba(149,205,255,0.26),transparent_30%)]" />
       <section className="relative mx-auto flex h-full min-h-0 w-full max-w-7xl flex-col overflow-hidden px-6 py-8 sm:px-10 lg:px-12">
         <AppHeader status={systemStatus}>
